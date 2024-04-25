@@ -1,0 +1,160 @@
+---
+title: "Homework 10- Statistical Thinking"
+author: "Arjun Kumar"
+date: "2024-04-25"
+output: html_document
+---
+https://github.com/ArjunKumar2004/HW10
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(tibble)
+library(rvest)
+library(dplyr)
+library(readr)
+library(boot)
+```
+
+#Problem 1
+
+## Part A
+
+We are focusing on the question if the number of Fire Access Improvement Rating (FAIR) policies (performance indicators of private insurance market access) have any relationship with the racial/ethnic constitution of the ZIP codes in the city of Chicago, after controlling for the fire incidents, age of the housing units and the median family income.
+
+## Part B
+
+Linear regression analysis in its statistical form gives us the relationship between (dependent variable)FAIR policies and (independent variables)minority percentage, building incidents, age of housing units, and median family income.
+
+## Part C
+```{r echo=FALSE}
+# Load the data
+data <- read.csv("redlining.csv")
+
+# Fit a linear regression model
+model <- lm(policies ~ minority + fire + age + income, data = data)
+
+# Get the summary of the model
+summary_table <- summary(model)$coefficients
+
+# Calculate confidence intervals for coefficients
+conf_intervals <- confint(model)
+
+# Combine coefficients and confidence intervals into a table
+results_table <- cbind(summary_table, conf_intervals)
+
+# Create a kable-style table
+kable(results_table, 
+      caption = "Linear Regression Results with Confidence Intervals",
+      align = c("l", "c", "c", "c", "c", "c", "c"),
+      format.args = list(digits = c(2, 4, 4, 4, 4, 4, 4))
+      ) %>%
+  kable_styling(full_width = FALSE)
+
+```
+## Part D
+
+The coefficients and confidence intervals from the linear regression analysis provide insights into the associations between FAIR policies and the variables of interest. Here are the key interpretations:
+Minority: A one-percentage-point increase in the minority population is associated with an increase in FAIR policies ranging from 0.0025 to 0.0142 per 100 housing units, with 95% confidence.
+Fire: Each additional fire incident is associated with an increase in FAIR policies ranging from 0.0039 to 0.0396 per 100 housing units, with 95% confidence.
+Age: A one-percentage-point increase in older housing units is associated with a change in FAIR policies ranging from -0.002 to 0.0132 per 100 housing units, with 95% confidence.
+Income: Each thousand-dollar increase in median family income is associated with a change in FAIR policies ranging from -0.0935 to 0.0616 per 100 housing units, with 95% confidence.
+In conclusion, while controlling for fire incidents, age of housing units, and median family income, there is evidence to suggest that the racial/ethnic composition (minority percentage) and fire incidents have a significant association with the number of FAIR policies in ZIP codes in Chicago. However, the association with age of housing units and income is less clear and may require further investigation or consideration of additional factors.
+
+# Problem 2
+
+```{r echo=FALSE}
+groceries = read.csv("groceries.csv")
+```
+
+## Part A
+```{r echo = FALSE}
+avg_prices <- groceries %>%
+  group_by(Store) %>%
+  summarise(Avg_Price = mean(Price))
+
+# Create the bar graph
+ggplot(avg_prices, aes(x = Avg_Price, y = Store)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Average Price of Products Across Different Stores",
+       x = "Average Price ($)",
+       y = "Store") +
+  coord_flip()
+```
+
+## Part B
+```{r echo = FALSE}
+store_counts <- groceries %>%
+  group_by(Product) %>%
+  summarise(Num_Stores = n_distinct(Store))
+
+# Create the bar graph
+ggplot(store_counts, aes(x = Num_Stores, y = Product)) +
+  geom_bar(stat = "identity", fill = "lightgreen") +
+  labs(title = "Number of Stores Selling Each Product",
+       x = "Number of Stores",
+       y = "Product")
+```
+
+## Part C
+```{r echo=FALSE}
+# Fit a regression model for Price versus Product and Type of store
+model_type <- lm(Price ~ Product + Type, data = groceries)
+
+# Get coefficients and confidence intervals
+conf_intervals <- confint(model_type)
+
+# Extract the confidence interval for convenience stores if it exists within bounds
+convenience_conf_int <- conf_intervals["TypeGrocery", ]
+lower_bound <- convenience_conf_int[1]
+upper_bound <- convenience_conf_int[2]
+# Print the interval in a sentence
+cat("Compared with ordinary grocery stores, convenience stores charge between",
+    round(lower_bound,2), "and", round(upper_bound,2), "dollars more for the same product.")
+```
+
+## Part D
+```{r echo=FALSE}
+model_store <- lm(Price ~ Product + Store, data = groceries)
+
+# Get the coefficients
+coefficients_store <- coef(model_store)
+
+# Identify the stores with the lowest and highest prices
+lowest_price_stores <- names(sort(coefficients_store)[1:2])
+highest_price_stores <- names(sort(coefficients_store, decreasing = TRUE)[1:2])
+
+# Display the results
+lowest_price_stores
+highest_price_stores
+cat("Stores with the lowest prices for the same product are:", lowest_price_stores[1], "and", lowest_price_stores[2], "\n")
+cat("Stores with the highest prices for the same product are:", highest_price_stores[1], "and", highest_price_stores[2], "\n")
+```
+
+## Part E
+```{r echo=FALSE}
+# Get the coefficients for Central Market and HEB
+coef_central_market <- coefficients_store["StoreCentral Market"]
+coef_heb <- coefficients_store["StoreHEB"]
+
+# Display the coefficients
+cat("Coefficient for Central Market:", coef_central_market, "\n")
+cat("Coefficient for HEB:", coef_heb, "\n")
+```
+
+## Part F
+```{r echo=FALSE}
+# Mutate the Income10K variable
+groceries <- groceries %>%
+  mutate(Income10K = Income / 10000)
+
+# Fit a regression model for Price versus Product and Income10K
+model_income <- lm(Price ~ Product + Income10K, data = groceries)
+
+# Get the coefficients for Income10K
+coef_income <- coef(model_income)
+
+# Display the coefficients
+cat("Coefficient for Income10K:", coef_income["Income10K"], "\n")
+```
